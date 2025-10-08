@@ -69,6 +69,53 @@ class TestStoryScopedIDGeneration:
         assert result[0].id == "TC-US001-001"
         assert result[1].id == "TC-US001-002"
     
+    def test_story_scoped_id_edge_cases(self):
+        """Test ID generation handles edge cases correctly."""
+        model = MagicMock()
+        device = torch.device('cpu')
+        config = {'generation': {'max_length': 100}}
+        
+        generator = TestCaseGenerator(model, device, config)
+        
+        # Test various story ID formats
+        test_cases_empty = [
+            TestCase(
+                id="TC-000",
+                type=TestType.POSITIVE,
+                priority=Priority.P1,
+                description="Test",
+                preconditions=["Pre"],
+                test_steps=[TestStep(step_number=1, action="Action")],
+                expected_results=[ExpectedResult(result="Result")],
+                test_data="Data",
+                labels=["label"],
+                source_story_id=""
+            ),
+        ]
+        
+        # Empty story ID should use default US000
+        result = generator._assign_ids_and_priorities(test_cases_empty, "")
+        assert result[0].id == "TC-US000-001"
+        
+        # Non-numeric story ID should use fallback
+        test_cases_custom = [
+            TestCase(
+                id="TC-000",
+                type=TestType.POSITIVE,
+                priority=Priority.P1,
+                description="Test",
+                preconditions=["Pre"],
+                test_steps=[TestStep(step_number=1, action="Action")],
+                expected_results=[ExpectedResult(result="Result")],
+                test_data="Data",
+                labels=["label"],
+                source_story_id="CUSTOM"
+            ),
+        ]
+        
+        result = generator._assign_ids_and_priorities(test_cases_custom, "CUSTOM")
+        assert result[0].id == "TC-CUSTOM-001"
+    
     def test_story_scoped_id_different_stories(self):
         """Test that different stories get different ID scopes."""
         model = MagicMock()
@@ -258,10 +305,11 @@ class TestDeduplication:
 class TestQualityValidation:
     """Test quality validation functionality."""
     
-    def test_repetitive_words_detection(self):
-        """Test detection of repetitive words."""
+    def test_consecutive_duplicate_words_detection(self):
+        """Test detection of consecutive duplicate words."""
         processor = TestCasePostProcessor()
         
+        # Test with consecutive duplicates
         test_case = TestCase(
             id="TC-001",
             type=TestType.POSITIVE,
@@ -278,7 +326,33 @@ class TestQualityValidation:
         is_valid, issues = processor.validate_test_quality(test_case)
         
         assert not is_valid
-        assert "Repetitive words in description" in issues
+        assert "Consecutive duplicate words in description" in issues
+    
+    def test_non_consecutive_duplicates_allowed(self):
+        """Test that non-consecutive duplicate words are allowed."""
+        processor = TestCasePostProcessor()
+        
+        # Test with non-consecutive duplicates (this is valid!)
+        test_case = TestCase(
+            id="TC-001",
+            type=TestType.POSITIVE,
+            priority=Priority.P1,
+            description="test user authentication and user permissions",
+            preconditions=["System is running", "User account exists"],
+            test_steps=[
+                TestStep(step_number=1, action="Navigate to login page"),
+                TestStep(step_number=2, action="Enter credentials")
+            ],
+            expected_results=[ExpectedResult(result="Success")],
+            test_data="Valid data",
+            labels=["auth"],
+            source_story_id="US-001"
+        )
+        
+        is_valid, issues = processor.validate_test_quality(test_case)
+        
+        # Should NOT be flagged for having "user" and "test" repeated non-consecutively
+        assert "Consecutive duplicate words" not in str(issues)
     
     def test_truncated_text_detection(self):
         """Test detection of truncated text."""

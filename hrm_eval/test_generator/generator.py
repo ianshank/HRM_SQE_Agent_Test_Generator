@@ -267,13 +267,16 @@ class TestCaseGenerator:
             if not test_case.id or test_case.id == "TC-000":
                 # Generate story-scoped ID: TC-US001-001
                 story_prefix = story_id if story_id else test_case.source_story_id or "US000"
-                # Clean story_id (e.g., "US-001" or "001" -> "US001")
+                # Clean story_id (e.g., "US-001" or "001" -> "001")
                 clean_id = story_prefix.replace("-", "").replace("US", "")
-                try:
+                
+                # Check if clean_id is numeric and non-empty
+                if clean_id.isdigit() and clean_id:
                     test_case.id = f"TC-US{int(clean_id):03d}-{idx:03d}"
-                except ValueError:
-                    # Fallback if clean_id is not numeric
-                    test_case.id = f"TC-{clean_id[:6]}-{idx:03d}"
+                else:
+                    # Use original story_prefix as fallback for non-numeric IDs
+                    fallback_id = story_prefix.replace("-", "")[:6] if story_prefix else f"GEN{idx:03d}"
+                    test_case.id = f"TC-{fallback_id}-{idx:03d}"
             
             if not test_case.priority:
                 test_case.priority = self.post_processor.determine_priority(test_case)

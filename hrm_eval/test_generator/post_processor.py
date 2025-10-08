@@ -28,6 +28,13 @@ class TestCasePostProcessor:
     TestCase objects with steps, expected results, and metadata.
     """
     
+    # Constants for text cleaning
+    COMMON_SHORT_WORDS = {'for', 'the', 'and', 'but', 'or', 'is', 'in', 'on', 'at', 'to', 'a', 'an'}
+    
+    # Constants for quality validation
+    GENERIC_TERMS = ['integration test', 'agent agent', 'test test', 'for: requirement']
+    TRUNCATED_INDICATORS = ['ceptance', 'equirement', 'rchitecture']
+    
     def __init__(self):
         """Initialize post-processor."""
         self.token_to_keyword = {
@@ -181,8 +188,7 @@ class TestCasePostProcessor:
         
         # Remove truncated words (less than 3 chars unless common)
         words = result.split()
-        common_short = {'for', 'the', 'and', 'but', 'or', 'is', 'in', 'on', 'at', 'to', 'a', 'an'}
-        cleaned_words = [w for w in words if len(w) >= 3 or w.lower() in common_short]
+        cleaned_words = [w for w in words if len(w) >= 3 or w.lower() in self.COMMON_SHORT_WORDS]
         
         return " ".join(cleaned_words)
     
@@ -411,19 +417,22 @@ class TestCasePostProcessor:
         """
         issues = []
         
-        # Check for repetitive words
+        # Check for consecutive duplicate words (not all repetitions)
         words = test_case.description.split()
         word_list = [w.lower() for w in words]
-        if len(word_list) != len(set(word_list)):
-            issues.append("Repetitive words in description")
+        has_consecutive_duplicates = any(
+            word_list[i] == word_list[i-1] 
+            for i in range(1, len(word_list))
+        )
+        if has_consecutive_duplicates:
+            issues.append("Consecutive duplicate words in description")
         
-        # Check for truncated text
-        if any(word in test_case.description.lower() for word in ['ceptance', 'equirement', 'rchitecture']):
+        # Check for truncated text using class constant
+        if any(word in test_case.description.lower() for word in self.TRUNCATED_INDICATORS):
             issues.append("Truncated text detected")
         
-        # Check for generic descriptions
-        generic_terms = ['integration test', 'agent agent', 'test test', 'for: requirement']
-        if any(term in test_case.description.lower() for term in generic_terms):
+        # Check for generic descriptions using class constant
+        if any(term in test_case.description.lower() for term in self.GENERIC_TERMS):
             issues.append("Too generic - lacks specificity")
         
         # Check minimum steps

@@ -26,6 +26,9 @@ class NaturalLanguageParser:
     - Free text with headers
     """
     
+    # Section terminators for acceptance criteria parsing
+    SECTION_TERMINATORS = ('User Story', 'Related Task', 'Epic', 'US', 'Story')
+    
     # Regex patterns for detection
     EPIC_PATTERNS = [
         r'^Epic:?\s*(.+)$',
@@ -230,7 +233,7 @@ class NaturalLanguageParser:
             
             # If in criteria section, treat each non-empty line as a criterion
             if in_criteria_section:
-                if not line or line.startswith(('User Story', 'Related Task', 'Epic', 'US', 'Story')):
+                if not line or line.startswith(self.SECTION_TERMINATORS):
                     in_criteria_section = False
                     continue
                 if len(line) > 5 and not line.startswith('#'):
