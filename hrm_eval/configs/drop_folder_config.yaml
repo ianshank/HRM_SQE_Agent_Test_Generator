@@ -21,7 +21,7 @@ drop_folder:
   # Processing settings
   use_rag: true  # Enable RAG-enhanced generation
   top_k_similar: 5  # Number of similar tests to retrieve
-  min_similarity: 0.5  # Minimum similarity threshold for RAG
+  min_similarity: 0.35  # Minimum similarity threshold for RAG (0.35 = 35%)
   
   # Model configuration
   model_checkpoint: "fine_tuned_checkpoints/media_fulfillment/checkpoint_epoch_3_best.pt"

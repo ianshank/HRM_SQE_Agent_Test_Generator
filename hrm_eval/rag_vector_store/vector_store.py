@@ -161,12 +161,17 @@ class ChromaDBBackend(VectorStoreBackend):
             
             if results['ids'] and results['ids'][0]:
                 for i, doc_id in enumerate(results['ids'][0]):
+                    # Convert distance to similarity score
+                    # Using 1/(1+distance) formula which works for any distance >= 0
+                    distance = results['distances'][0][i] if results['distances'] else 0.0
+                    similarity = 1.0 / (1.0 + distance)
+                    
                     doc = {
                         'id': doc_id,
                         'document': results['documents'][0][i] if results['documents'] else '',
                         'metadata': results['metadatas'][0][i] if results['metadatas'] else {},
-                        'distance': results['distances'][0][i] if results['distances'] else 0.0,
-                        'similarity': 1 - results['distances'][0][i] if results['distances'] else 0.0,
+                        'distance': distance,
+                        'similarity': similarity,
                     }
                     similar_docs.append(doc)
             

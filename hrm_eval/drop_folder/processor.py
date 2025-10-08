@@ -88,6 +88,7 @@ class DropFolderProcessor:
         self.model = None
         self.test_generator = None
         self.rag_retriever = None
+        self._indexed_existing_tests = False  # Track if indexing has been done
         
         # Rate limiting
         self.processing_times: List[float] = []
@@ -198,6 +199,128 @@ class DropFolderProcessor:
             logger.error(f"Failed to initialize models: {e}", exc_info=True)
             raise
     
+    def index_existing_tests(self, test_data_paths: Optional[List[Path]] = None) -> int:
+        """
+        Index existing test cases into RAG vector store.
+        
+        Args:
+            test_data_paths: Optional list of paths to test data files.
+                            If None, uses default locations.
+        
+        Returns:
+            Number of tests indexed
+        """
+        if self.rag_retriever is None:
+            logger.warning("RAG not enabled, skipping indexing")
+            return 0
+        
+        # Default test data paths
+        if test_data_paths is None:
+            base_path = Path(__file__).parent.parent
+            test_data_paths = [
+                base_path / "generated_tests" / "media_fulfillment_20251007_220527" / "test_cases.json",
+                base_path / "test_results" / "generated_test_cases_fulfillment.json",
+            ]
+        
+        logger.info("=" * 80)
+        logger.info("Indexing Existing Test Cases into RAG Vector Store")
+        logger.info("=" * 80)
+        
+        total_indexed = 0
+        all_documents = []
+        all_embeddings = []
+        all_ids = []
+        
+        for data_path in test_data_paths:
+            if not data_path.exists():
+                logger.debug(f"Test data file not found: {data_path}")
+                continue
+            
+            logger.info(f"Indexing from {data_path.name}...")
+            
+            try:
+                import json
+                with open(data_path, 'r') as f:
+                    content = f.read()
+                
+                # Try parsing as JSON array first
+                try:
+                    test_list = json.loads(content)
+                    if isinstance(test_list, list):
+                        for idx, test_data in enumerate(test_list, 1):
+                            try:
+                                # Create text representation for embedding
+                                text = self._create_test_text_repr(test_data)
+                                embedding = self.rag_retriever.embedding_generator.encode(text)
+                                
+                                all_documents.append(test_data)
+                                all_embeddings.append(embedding)
+                                all_ids.append(f"{data_path.stem}_{idx}")
+                                total_indexed += 1
+                            except Exception as e:
+                                logger.warning(f"Error processing test {idx}: {e}")
+                except json.JSONDecodeError:
+                    # Try JSONL format
+                    with open(data_path, 'r') as f:
+                        for line_num, line in enumerate(f, 1):
+                            try:
+                                test_data = json.loads(line)
+                                text = self._create_test_text_repr(test_data)
+                                embedding = self.rag_retriever.embedding_generator.encode(text)
+                                
+                                all_documents.append(test_data)
+                                all_embeddings.append(embedding)
+                                all_ids.append(f"{data_path.stem}_{line_num}")
+                                total_indexed += 1
+                            except Exception as e:
+                                logger.warning(f"Error processing line {line_num}: {e}")
+            
+            except Exception as e:
+                logger.error(f"Error indexing {data_path}: {e}")
+        
+        # Add all documents to vector store in batch
+        if all_documents:
+            logger.info(f"Adding {len(all_documents)} documents to vector store...")
+            self.rag_retriever.vector_store.add_documents(
+                documents=all_documents,
+                embeddings=all_embeddings,
+                ids=all_ids
+            )
+            logger.info(f"✓ Successfully indexed {total_indexed} test cases")
+        else:
+            logger.warning("No test cases found to index")
+        
+        logger.info("=" * 80)
+        return total_indexed
+    
+    def _create_test_text_repr(self, test_data: Dict[str, Any]) -> str:
+        """Create text representation of test case for embedding."""
+        parts = []
+        
+        if 'description' in test_data:
+            parts.append(f"Test: {test_data['description']}")
+        
+        if 'type' in test_data:
+            parts.append(f"Type: {test_data['type']}")
+        
+        if 'preconditions' in test_data and test_data['preconditions']:
+            precond = test_data['preconditions'][:2] if isinstance(test_data['preconditions'], list) else [test_data['preconditions']]
+            parts.append(f"Preconditions: {'; '.join(str(p) for p in precond)}")
+        
+        if 'test_steps' in test_data and test_data['test_steps']:
+            steps = test_data['test_steps'][:3] if isinstance(test_data['test_steps'], list) else []
+            steps_text = "; ".join([s.get('action', str(s)) for s in steps if isinstance(s, dict)])
+            if steps_text:
+                parts.append(f"Steps: {steps_text}")
+        
+        if 'expected_results' in test_data and test_data['expected_results']:
+            results = test_data['expected_results'][:2] if isinstance(test_data['expected_results'], list) else []
+            results_text = "; ".join([r.get('result', str(r)) for r in results if isinstance(r, dict)])
+            if results_text:
+                parts.append(f"Expected: {results_text}")
+        
+        return " | ".join(parts)
+    
     def process_file(self, filepath: Path) -> ProcessingResult:
         """
         Process a single requirements file.
@@ -232,6 +355,12 @@ class DropFolderProcessor:
             
             # Initialize models if not done
             self.initialize_models()
+            
+            # Index existing tests into RAG vector store (one-time on first run)
+            if not self._indexed_existing_tests and self.rag_retriever is not None:
+                num_indexed = self.index_existing_tests()
+                self._indexed_existing_tests = True
+                logger.info(f"RAG vector store initialized with {num_indexed} existing test cases")
             
             # Generate test cases
             test_cases, rag_stats = self._generate_tests(epic)
