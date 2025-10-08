@@ -458,7 +458,7 @@ class DropFolderProcessor:
         logger.debug(f"File validation passed: {filepath.name}")
     
     def _generate_tests(self, epic: Epic) -> tuple[List[TestCase], Dict[str, Any]]:
-        """Generate test cases for epic."""
+        """Generate test cases for epic with RAG enhancement and deduplication."""
         test_cases = []
         rag_stats = {
             'rag_enabled': False,
@@ -469,36 +469,53 @@ class DropFolderProcessor:
         for user_story in epic.user_stories:
             logger.debug(f"Generating tests for story: {user_story.summary[:50]}...")
             
-            # Generate with RAG if enabled
+            # Retrieve RAG examples
+            rag_examples = []
             if self.rag_retriever and self.config.get('use_rag', True):
-                # Retrieve similar tests
                 query = f"{epic.title} | {user_story.summary}"
-                similar_tests = self.rag_retriever.retrieve_by_text(
+                rag_examples = self.rag_retriever.retrieve_by_text(
                     text=query,
                     top_k=self.config.get('top_k_similar', 5),
-                    min_similarity=self.config.get('min_similarity', 0.5)
+                    min_similarity=self.config.get('min_similarity', 0.35)
                 )
-                
                 rag_stats['rag_enabled'] = True
-                rag_stats['retrieved_examples'] += len(similar_tests)
+                rag_stats['retrieved_examples'] += len(rag_examples)
                 rag_stats['total_retrievals'] += 1
-                
-                logger.debug(f"Retrieved {len(similar_tests)} similar tests via RAG")
+                logger.debug(f"Retrieved {len(rag_examples)} similar tests")
             
-            # Generate tests using HRM model
+            # Generate tests with RAG context
             epic_context = {
                 'epic_id': epic.epic_id,
                 'title': epic.title,
                 'description': getattr(epic, 'description', ''),
                 'business_value': getattr(epic, 'business_value', ''),
-                'target_release': getattr(epic, 'target_release', '')
+                'target_release': getattr(epic, 'target_release', ''),
+                'rag_examples': rag_examples,  # Pass RAG examples
             }
+            
             story_tests = self.test_generator.generate_for_user_story(
                 story=user_story,
                 epic_context=epic_context
             )
             
+            # Post-process: deduplicate at story level
+            story_tests = self.test_generator.post_processor.deduplicate_tests(story_tests)
+            
+            # Validate quality
+            for test in story_tests:
+                is_valid, issues = self.test_generator.post_processor.validate_test_quality(test)
+                if not is_valid:
+                    logger.warning(f"Test {test.id} quality issues: {', '.join(issues)}")
+            
             test_cases.extend(story_tests)
+        
+        # Global deduplication across all stories
+        original_count = len(test_cases)
+        test_cases = self.test_generator.post_processor.deduplicate_tests(test_cases)
+        dedupe_count = original_count - len(test_cases)
+        
+        if dedupe_count > 0:
+            logger.info(f"Global deduplication removed {dedupe_count} duplicate tests")
         
         return test_cases, rag_stats
     
