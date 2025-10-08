@@ -77,6 +77,11 @@ analysis/
 !**/test_data/*.json
 !**/hrm_checkpoint_eval/*.json
 
+# Security scan temporary reports
+snyk_*.json
+snyk_*.txt
+snyk_*.html
+
 # Evaluation Reports
 *.pdf
 !**/docs/*.pdf
