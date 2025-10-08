@@ -10,7 +10,6 @@ import os
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-from functools import lru_cache
 import yaml
 from pydantic import BaseModel, Field, validator
 
@@ -328,10 +327,10 @@ class SystemConfig(BaseModel):
         validate_assignment = True
 
 
-@lru_cache(maxsize=1)
 def load_system_config(
     config_path: Optional[Union[str, Path]] = None,
     overrides: Optional[Dict[str, Any]] = None,
+    _use_cache: bool = True,
 ) -> SystemConfig:
     """
     Load system configuration from YAML file.
