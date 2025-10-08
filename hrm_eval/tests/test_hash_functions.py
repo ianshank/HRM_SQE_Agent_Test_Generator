@@ -7,7 +7,7 @@ to ensure proper functionality and improved security.
 
 import pytest
 import hashlib
-from convert_sqe_data import SQEDataConverter
+from hrm_eval.convert_sqe_data import HRMDataConverter
 
 
 class TestHashFunctionReplacement:
@@ -15,14 +15,14 @@ class TestHashFunctionReplacement:
     
     @pytest.fixture
     def converter(self):
-        """Create SQEDataConverter instance."""
-        return SQEDataConverter()
+        """Create HRMDataConverter instance."""
+        return HRMDataConverter()
     
     def test_token_mapping_consistency(self, converter):
         """Test that token mapping produces consistent results."""
         word = "testword"
-        token1 = converter.get_token_for_word(word)
-        token2 = converter.get_token_for_word(word)
+        token1 = converter._word_to_token(word)
+        token2 = converter._word_to_token(word)
         
         assert token1 == token2, "Same word should produce same token"
     
@@ -34,7 +34,7 @@ class TestHashFunctionReplacement:
         ]
         
         for word in test_words:
-            token = converter.get_token_for_word(word)
+            token = converter._word_to_token(word)
             assert 1 <= token <= 10, f"Token {token} for '{word}' out of range"
     
     def test_keyword_mapping_priority(self, converter):
@@ -49,7 +49,7 @@ class TestHashFunctionReplacement:
         }
         
         for word, expected_token in keyword_tests.items():
-            token = converter.get_token_for_word(word)
+            token = converter._word_to_token(word)
             assert token == expected_token, \
                 f"Keyword '{word}' should map to token {expected_token}"
     
@@ -57,7 +57,7 @@ class TestHashFunctionReplacement:
         """Test that hash function provides reasonable distribution."""
         # Generate tokens for many different words
         words = [f"word{i}" for i in range(1000)]
-        tokens = [converter.get_token_for_word(word) for word in words]
+        tokens = [converter._word_to_token(word) for word in words]
         
         # Count token distribution
         from collections import Counter
@@ -75,10 +75,10 @@ class TestHashFunctionReplacement:
     def test_sha256_usage(self):
         """Verify SHA-256 is used instead of MD5."""
         import inspect
-        import convert_sqe_data
+        from hrm_eval import convert_sqe_data
         
         # Read the source code
-        source = inspect.getsource(convert_sqe_data.SQEDataConverter.get_token_for_word)
+        source = inspect.getsource(convert_sqe_data.HRMDataConverter._word_to_token)
         
         # Verify SHA-256 is mentioned
         assert 'sha256' in source.lower(), \
@@ -103,8 +103,8 @@ class TestHashFunctionReplacement:
         
         different_tokens = 0
         for word1, word2 in similar_pairs:
-            token1 = converter.get_token_for_word(word1)
-            token2 = converter.get_token_for_word(word2)
+            token1 = converter._word_to_token(word1)
+            token2 = converter._word_to_token(word2)
             if token1 != token2:
                 different_tokens += 1
         
@@ -115,7 +115,7 @@ class TestHashFunctionReplacement:
     def test_empty_string_handling(self, converter):
         """Test handling of empty string."""
         # Should not crash
-        token = converter.get_token_for_word("")
+        token = converter._word_to_token("")
         assert 1 <= token <= 10
     
     def test_unicode_handling(self, converter):
@@ -126,7 +126,7 @@ class TestHashFunctionReplacement:
         
         for word in unicode_words:
             # Should not crash
-            token = converter.get_token_for_word(word)
+            token = converter._word_to_token(word)
             assert 1 <= token <= 10
     
     def test_case_insensitivity(self, converter):
@@ -138,7 +138,7 @@ class TestHashFunctionReplacement:
         ]
         
         for variations in word_variations:
-            tokens = [converter.get_token_for_word(w) for w in variations]
+            tokens = [converter._word_to_token(w) for w in variations]
             # All variations should produce the same token
             assert len(set(tokens)) == 1, \
                 f"Case variations {variations} should produce same token"
@@ -197,7 +197,7 @@ class TestIntegrationWithConverter:
     @pytest.fixture
     def converter(self):
         """Create converter instance."""
-        return SQEDataConverter()
+        return HRMDataConverter()
     
     def test_complete_example_conversion(self, converter):
         """Test conversion of complete example."""

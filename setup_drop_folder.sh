@@ -26,7 +26,8 @@ echo -e "${GREEN}✓${NC} Python 3 found: $(python3 --version)"
 echo ""
 
 echo "Step 2: Installing watchdog library..."
-pip3 install watchdog>=3.0.0 --quiet || {
+pip3 install --user watchdog>=3.0.0 --quiet 2>/dev/null || \
+    pip3 install watchdog>=3.0.0 --quiet || {
     echo -e "${YELLOW}Warning: Could not install watchdog. Polling mode will be used.${NC}"
 }
 echo -e "${GREEN}✓${NC} Dependencies checked"

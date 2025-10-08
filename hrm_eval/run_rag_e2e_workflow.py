@@ -433,9 +433,10 @@ def run_rag_e2e_workflow():
     
     # Initialize vector store and embedding generator
     logger.info("Initializing vector store and embeddings...")
-    vector_store = VectorStore(backend="chromadb", persist_directory="vector_store_db")
+    vector_store_path = Path("vector_store_db").resolve()
+    vector_store = VectorStore(backend="chromadb", persist_directory=str(vector_store_path))
     embedding_generator = EmbeddingGenerator()
-    logger.info("Vector store initialized")
+    logger.info(f"Vector store initialized at: {vector_store_path}")
     
     # Initialize RAG retriever
     rag_retriever = RAGRetriever(

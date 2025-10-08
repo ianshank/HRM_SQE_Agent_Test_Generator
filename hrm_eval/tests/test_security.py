@@ -132,13 +132,16 @@ class TestPathValidator:
         """Test protection against symlink-based traversal."""
         # Create symlink pointing outside base directory
         import os
+        import tempfile
+        
         symlink_path = temp_base_dir / "malicious_link"
         try:
-            os.symlink("/etc", str(symlink_path))
-            
-            # Attempting to access through symlink should be blocked
-            with pytest.raises(PathTraversalError):
-                validator.validate_path("malicious_link/passwd")
+            with tempfile.TemporaryDirectory() as outside_dir:
+                os.symlink(outside_dir, str(symlink_path))
+                
+                # Attempting to access through symlink should be blocked
+                with pytest.raises(PathTraversalError):
+                    validator.validate_path("malicious_link/somefile")
         except OSError:
             # Skip if symlinks not supported on this system
             pytest.skip("Symlinks not supported")
