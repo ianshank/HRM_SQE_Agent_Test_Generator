@@ -15,7 +15,7 @@ import time
 from tqdm import tqdm
 
 from ..models import HRMModel
-from ..data import HRMDataset
+from ..data.dataset import PuzzleDataset
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class HRMFineTuner:
         """
         logger.info(f"Starting fine-tuning from {training_data_path}")
         
-        train_dataset = HRMDataset(training_data_path)
+        train_dataset = PuzzleDataset(Path(training_data_path))
         train_loader = DataLoader(
             train_dataset,
             batch_size=self.config.batch_size,
@@ -120,7 +120,7 @@ class HRMFineTuner:
         
         val_loader = None
         if val_data_path:
-            val_dataset = HRMDataset(val_data_path)
+            val_dataset = PuzzleDataset(Path(val_data_path))
             val_loader = DataLoader(
                 val_dataset,
                 batch_size=self.config.batch_size,

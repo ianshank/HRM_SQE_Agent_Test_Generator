@@ -10,7 +10,7 @@ from typing import Dict, Any, List
 import logging
 
 from ..models import HRMModel
-from ..test_generator import TestCaseGenerator
+from ..test_generator.generator import TestCaseGenerator
 from ..requirements_parser import RequirementParser, Epic
 from ..requirements_parser.schemas import TestContext
 
