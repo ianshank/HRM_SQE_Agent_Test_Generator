@@ -1,4 +1,4 @@
-# HRM Evaluation & Test Generation System
+    # HRM Evaluation & Test Generation System
 
 A production-ready system for evaluating Hierarchical Recurrent Models (HRM) and automatically generating test cases from structured requirements using transformer-based neural networks.
 
@@ -223,4 +223,4 @@ Apache
 
 ## Contact
 Ian Cruickshank
-ianshank@gmai.com
+ianshank@gmail.com
