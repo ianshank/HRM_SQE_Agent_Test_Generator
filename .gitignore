@@ -42,6 +42,7 @@ venv.bak/
 # Jupyter Notebook
 .ipynb_checkpoints
 *.ipynb
+!HRM_Evaluation_Complete_Demo.ipynb
 
 # PyCharm
 .idea/
