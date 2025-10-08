@@ -1,0 +1,335 @@
+# System-Wide Configuration
+# Centralizes all configuration values previously hard-coded throughout the codebase
+
+# Path Configuration
+paths:
+  # Checkpoint directories
+  base_checkpoint_dir: "checkpoints_hrm_v9_optimized"
+  checkpoint_pattern: "checkpoints_hrm_v9_optimized_step_{step}"
+  fine_tuned_dir: "fine_tuned_checkpoints"
+  configs_dir: "configs"
+  
+  # Output directories
+  results_dir: "results"
+  logs_dir: "logs"
+  temp_dir: "temp"
+  vector_store_dir: "vector_store_db"
+  
+  # Input/Output files
+  test_cases_filename: "test_cases.json"
+  requirements_filename: "requirements_epic.json"
+  report_filename: "report.md"
+  metadata_filename: "metadata.json"
+
+# RAG Configuration
+rag:
+  # Retrieval parameters
+  top_k_retrieval: 5
+  similarity_threshold: 0.5
+  min_similarity: 0.5
+  max_results: 10
+  
+  # Context slicing (how many items to include)
+  context_slicing:
+    acceptance_criteria_max: 3
+    test_steps_max: 3
+    expected_results_max: 2
+    preconditions_max: 2
+  
+  # Vector store
+  backend: "chromadb"  # chromadb or pinecone
+  collection_name: "test_cases"
+  embedding_model: "all-MiniLM-L6-v2"
+  embedding_dim: 384
+  distance_metric: "cosine"
+
+# Test Generation Configuration
+generation:
+  # Input processing
+  max_input_length: 100
+  max_sequence_length: 512
+  truncation: true
+  padding: true
+  
+  # Generation parameters
+  batch_size: 8
+  temperature: 0.8
+  top_p: 0.9
+  top_k: 50
+  num_beams: 4
+  max_new_tokens: 256
+  
+  # Test case parameters
+  min_test_cases_per_story: 1
+  max_test_cases_per_story: 10
+  default_priority: "P2"
+  default_test_type: "positive"
+
+# Fine-Tuning Configuration
+fine_tuning:
+  # Training parameters
+  num_epochs: 3
+  batch_size: 16
+  learning_rate: 2.0e-5
+  warmup_steps: 100
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  
+  # Optimizer
+  optimizer: "adamw"
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  adam_epsilon: 1.0e-8
+  
+  # Scheduler
+  lr_scheduler_type: "linear"
+  
+  # Data
+  train_test_split: 0.8
+  shuffle_data: true
+  seed: 42
+  
+  # Checkpointing
+  save_steps: 500
+  save_total_limit: 3
+  eval_steps: 100
+  logging_steps: 50
+
+# Output Configuration
+output:
+  # Formatting
+  formatting_width: 80
+  separator_char: "="
+  indent_spaces: 2
+  
+  # Report formats
+  report_formats: ["json", "markdown"]
+  include_metadata: true
+  include_timestamps: true
+  include_statistics: true
+  
+  # File naming
+  use_timestamps: true
+  timestamp_format: "%Y%m%d_%H%M%S"
+  
+  # Compression
+  compress_large_outputs: false
+  compression_threshold_mb: 10
+
+# Security Configuration
+security:
+  # Path validation
+  validate_paths: true
+  allow_absolute_paths: false
+  allowed_extensions: [".json", ".jsonl", ".txt", ".md", ".yaml", ".yml"]
+  max_file_size_mb: 100
+  
+  # Rate limiting
+  rate_limit_enabled: true
+  rate_limit_per_minute: 10
+  rate_limit_burst: 3
+  
+  # Input validation
+  sanitize_inputs: true
+  max_input_length: 10000
+  reject_suspicious_patterns: true
+
+# Debugging Configuration
+debug:
+  # General debug settings
+  enabled: false
+  verbose: false
+  
+  # Performance profiling
+  profile_performance: false
+  profile_memory: false
+  profile_gpu: false
+  
+  # Model I/O logging
+  log_model_inputs: false
+  log_model_outputs: false
+  log_intermediate_states: false
+  
+  # Breakpoints
+  breakpoint_on_error: false
+  breakpoint_on_warning: false
+  
+  # Profiling output
+  profiling_output_dir: "profiling_results"
+  save_flamegraph: false
+  save_memory_profile: false
+  
+  # Debug checkpoints
+  checkpoint_stages: []  # List of stage names to checkpoint
+
+# Logging Configuration
+logging:
+  # Log levels
+  default_level: "INFO"
+  module_levels:
+    hrm_eval.models: "INFO"
+    hrm_eval.test_generator: "INFO"
+    hrm_eval.rag_vector_store: "INFO"
+    hrm_eval.fine_tuning: "INFO"
+  
+  # Output
+  console_output: true
+  file_output: true
+  json_format: false
+  
+  # File settings
+  log_dir: "logs"
+  log_filename: null  # Auto-generate if null
+  max_file_size_mb: 100
+  backup_count: 5
+  
+  # Formatting
+  format_string: "%(asctime)s | %(levelname)-8s | %(name)-20s | %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+
+# Device Configuration
+device:
+  # Device selection
+  auto_select: true
+  preferred_device: "cuda"  # cuda, cpu, or mps
+  device_id: 0
+  
+  # Memory management
+  mixed_precision: false
+  gradient_checkpointing: false
+  max_memory_mb: null  # null for automatic
+  
+  # Multi-GPU
+  data_parallel: false
+  distributed: false
+
+# Model Configuration Overrides
+# These override values from model_config.yaml when needed
+model:
+  # Default checkpoint selection
+  default_checkpoint: "step_7566"  # Default checkpoint to use when not specified
+  
+  # Checkpoint loading
+  strict_loading: false
+  load_optimizer_state: false
+  map_location: null  # null for automatic
+  
+  # State dict handling
+  strip_prefixes: ["model.inner.", "model.", "module."]
+  key_mappings:
+    embedding_weight: "weight"
+  
+  # Model modes
+  eval_mode: true
+  requires_grad: false
+
+# Workflow Configuration
+workflow:
+  # Execution
+  max_retries: 3
+  retry_delay_seconds: 5
+  timeout_seconds: 3600
+  
+  # Caching
+  cache_models: true
+  cache_embeddings: true
+  cache_rag_results: false
+  
+  # Validation
+  validate_inputs: true
+  validate_outputs: true
+  
+  # Error handling
+  continue_on_error: false
+  save_partial_results: true
+
+# Drop Folder Configuration (overrides for drop_folder_config.yaml)
+drop_folder:
+  # Monitoring
+  watch_interval_seconds: 5
+  debounce_delay_seconds: 2
+  
+  # Processing
+  process_in_parallel: false
+  max_concurrent_files: 1
+  
+  # Auto-archiving
+  archive_after_processing: true
+  archive_on_error: true
+  delete_after_days: 30
+
+# API Configuration
+api:
+  # Server
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload: false
+  
+  # Timeouts
+  request_timeout_seconds: 300
+  keepalive_timeout_seconds: 5
+  
+  # Limits
+  max_request_size_mb: 50
+  max_concurrent_requests: 100
+  
+  # CORS
+  cors_enabled: true
+  cors_origins: ["*"]
+
+# Monitoring and Metrics
+monitoring:
+  # Metrics collection
+  enabled: false
+  metrics_backend: "prometheus"  # prometheus, statsd, or cloudwatch
+  
+  # Performance tracking
+  track_latency: true
+  track_throughput: true
+  track_resource_usage: true
+  
+  # Alerting
+  alert_on_errors: false
+  alert_threshold_error_rate: 0.05
+  
+# Feature Flags
+features:
+  enable_rag: true
+  enable_fine_tuning: true
+  enable_ensemble: false
+  enable_caching: true
+  enable_profiling: false
+  experimental_features: false
+
+# Experiment Tracking
+experiment:
+  # Weights & Biases
+  wandb_enabled: false
+  wandb_project: "hrm-test-generation"
+  wandb_entity: null
+  
+  # MLflow
+  mlflow_enabled: false
+  mlflow_tracking_uri: null
+  
+  # Tags and metadata
+  experiment_name: null  # Auto-generate if null
+  tags: []
+  notes: ""
+
+# Environment-Specific Overrides
+# These can be overridden via environment variables or command-line args
+overrides:
+  # Allow these keys to be overridden
+  allow_override: true
+  override_keys:
+    - "debug.enabled"
+    - "logging.default_level"
+    - "device.preferred_device"
+    - "rag.top_k_retrieval"
+    - "generation.batch_size"
+    - "fine_tuning.num_epochs"
+    - "paths.base_checkpoint_dir"
+
