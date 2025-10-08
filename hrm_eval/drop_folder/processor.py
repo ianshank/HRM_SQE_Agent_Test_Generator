@@ -357,9 +357,16 @@ class DropFolderProcessor:
                 logger.debug(f"Retrieved {len(similar_tests)} similar tests via RAG")
             
             # Generate tests using HRM model
+            epic_context = {
+                'epic_id': epic.epic_id,
+                'title': epic.title,
+                'description': getattr(epic, 'description', ''),
+                'business_value': getattr(epic, 'business_value', ''),
+                'target_release': getattr(epic, 'target_release', '')
+            }
             story_tests = self.test_generator.generate_for_user_story(
-                epic=epic,
-                user_story=user_story
+                story=user_story,
+                epic_context=epic_context
             )
             
             test_cases.extend(story_tests)
