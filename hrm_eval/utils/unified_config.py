@@ -335,7 +335,6 @@ class SystemConfig(BaseModel):
 def load_system_config(
     config_path: Optional[Union[str, Path]] = None,
     overrides: Optional[Dict[str, Any]] = None,
-    _use_cache: bool = True,
 ) -> SystemConfig:
     """
     Load system configuration from YAML file.

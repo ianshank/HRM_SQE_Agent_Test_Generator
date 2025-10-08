@@ -166,7 +166,7 @@ def run_rag_e2e_workflow():
             logger.info("\n🎯 Generating test cases...")
             
             pipeline = TestGenerationPipeline(
-                model=model_info.model,
+                model_manager=model_manager,
                 config=config,
                 rag_retriever=rag_components.get('retriever'),
             )

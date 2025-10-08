@@ -8,6 +8,7 @@ GPU utilization, and bottleneck detection.
 import logging
 import time
 import json
+import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional, NamedTuple
 from datetime import datetime
@@ -89,6 +90,11 @@ class PerformanceProfiler:
         self.profile_entries: List[ProfileEntry] = []
         self.active_profiles: Dict[str, Dict[str, Any]] = {}
         
+        # Cache PID for efficient memory profiling
+        self._pid = os.getpid()
+        self._psutil = None
+        self._torch = None
+        
         if self.enabled:
             logger.info("PerformanceProfiler initialized (enabled)")
             self._check_dependencies()
@@ -96,9 +102,10 @@ class PerformanceProfiler:
             logger.debug("PerformanceProfiler initialized (disabled)")
     
     def _check_dependencies(self):
-        """Check for optional profiling dependencies."""
+        """Check for optional profiling dependencies and cache imports."""
         try:
             import psutil
+            self._psutil = psutil
             self.has_psutil = True
         except ImportError:
             self.has_psutil = False
@@ -106,6 +113,7 @@ class PerformanceProfiler:
         
         try:
             import torch
+            self._torch = torch
             self.has_torch = torch.cuda.is_available()
         except ImportError:
             self.has_torch = False
@@ -358,9 +366,8 @@ class PerformanceProfiler:
             return None
         
         try:
-            import psutil
-            import os
-            process = psutil.Process(os.getpid())
+            # Use cached psutil module and PID for efficiency
+            process = self._psutil.Process(self._pid)
             return process.memory_info().rss / 1024 / 1024
         except Exception:
             return None
@@ -371,8 +378,8 @@ class PerformanceProfiler:
             return None
         
         try:
-            import torch
-            return torch.cuda.memory_allocated() / 1024 / 1024
+            # Use cached torch module for efficiency
+            return self._torch.cuda.memory_allocated() / 1024 / 1024
         except Exception:
             return None
     

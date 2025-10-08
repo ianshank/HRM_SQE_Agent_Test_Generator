@@ -16,6 +16,7 @@ from ..test_generator.coverage_analyzer import CoverageAnalyzer
 from ..rag_vector_store.retrieval import RAGRetriever
 from ..utils.unified_config import SystemConfig
 from .model_manager import ModelManager
+from .common_utils import create_rag_query_from_context
 
 logger = logging.getLogger(__name__)
 
@@ -194,7 +195,6 @@ class TestGenerationPipeline:
     
     def _create_rag_query(self, context: TestContext) -> str:
         """Create RAG query from test context."""
-        from .common_utils import create_rag_query_from_context
         return create_rag_query_from_context(context, self.config)
     
     def generate_tests(

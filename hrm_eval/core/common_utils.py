@@ -6,6 +6,7 @@ eliminating duplication and ensuring consistency.
 """
 
 import logging
+import copy
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -368,7 +369,7 @@ def merge_dictionaries(
             result.update(d)
         return result
     
-    import copy
+    # Deep merge with copy.deepcopy (copy imported at module level)
     result = {}
     
     for d in dicts:
