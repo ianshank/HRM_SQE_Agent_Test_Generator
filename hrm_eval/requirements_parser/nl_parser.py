@@ -218,11 +218,26 @@ class NaturalLanguageParser:
     def _extract_acceptance_criteria(self, lines: List[str]) -> List[AcceptanceCriteria]:
         """Extract acceptance criteria from lines."""
         criteria = []
+        in_criteria_section = False
         
         for line in lines:
             line = line.strip()
             
-            # Check AC patterns
+            # Detect start of acceptance criteria section
+            if re.match(r'^Acceptance\s+Criteria:?\s*$', line, re.IGNORECASE):
+                in_criteria_section = True
+                continue
+            
+            # If in criteria section, treat each non-empty line as a criterion
+            if in_criteria_section:
+                if not line or line.startswith(('User Story', 'Related Task', 'Epic', 'US', 'Story')):
+                    in_criteria_section = False
+                    continue
+                if len(line) > 5 and not line.startswith('#'):
+                    criteria.append(AcceptanceCriteria(criteria=line))
+                    continue
+            
+            # Check AC patterns (bullet points, numbered lists)
             for pattern in self.ac_re:
                 match = pattern.match(line)
                 if match:
