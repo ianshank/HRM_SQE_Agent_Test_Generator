@@ -15,7 +15,7 @@ import time
 from tqdm import tqdm
 
 from ..models import HRMModel
-from ..data.dataset import PuzzleDataset
+from ..data.dataset import PuzzleDataset, collate_fn
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +116,7 @@ class HRMFineTuner:
             batch_size=self.config.batch_size,
             shuffle=True,
             num_workers=0,
+            collate_fn=collate_fn,
         )
         
         val_loader = None
@@ -126,6 +127,7 @@ class HRMFineTuner:
                 batch_size=self.config.batch_size,
                 shuffle=False,
                 num_workers=0,
+                collate_fn=collate_fn,
             )
         
         training_metrics = {
