@@ -90,7 +90,8 @@ class HRMDataConverter:
             if keyword in word_lower:
                 return token_id
         
-        hash_val = int(hashlib.md5(word.encode()).hexdigest(), 16)
+        # Use SHA-256 instead of insecure MD5
+        hash_val = int(hashlib.sha256(word.encode()).hexdigest(), 16)
         return (hash_val % 9) + 1  # Map to tokens 1-9
     
     def convert_example(

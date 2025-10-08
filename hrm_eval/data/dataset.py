@@ -170,6 +170,8 @@ def collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
     """
     Collate function for batching with padding.
     
+    Handles variable-length input and target sequences.
+    
     Args:
         batch: List of examples
         
@@ -178,17 +180,26 @@ def collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
     """
     puzzle_ids = torch.stack([item["puzzle_id"] for item in batch])
     
-    max_len = max(item["input_ids"].size(0) for item in batch)
+    # Calculate max lengths for input and target separately
+    max_input_len = max(item["input_ids"].size(0) for item in batch)
+    max_target_len = max(item["target_ids"].size(0) for item in batch)
+    
+    # Use the maximum of both for padding
+    max_len = max(max_input_len, max_target_len)
     
     input_ids = torch.zeros(len(batch), max_len, dtype=torch.long)
     target_ids = torch.zeros(len(batch), max_len, dtype=torch.long)
     attention_mask = torch.zeros(len(batch), max_len, dtype=torch.long)
     
     for i, item in enumerate(batch):
-        seq_len = item["input_ids"].size(0)
-        input_ids[i, :seq_len] = item["input_ids"]
-        target_ids[i, :seq_len] = item["target_ids"]
-        attention_mask[i, :seq_len] = item["attention_mask"]
+        input_seq_len = item["input_ids"].size(0)
+        target_seq_len = item["target_ids"].size(0)
+        
+        input_ids[i, :input_seq_len] = item["input_ids"]
+        target_ids[i, :target_seq_len] = item["target_ids"]
+        
+        # Attention mask based on input length
+        attention_mask[i, :input_seq_len] = item["attention_mask"]
     
     return {
         "puzzle_ids": puzzle_ids,

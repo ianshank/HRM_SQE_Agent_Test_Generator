@@ -177,6 +177,8 @@ class TrainingDataCollector:
         """
         Augment training data with existing SQE examples.
         
+        Converts SQE format (prompt/completion) to HRM format (input_sequence/target_sequence).
+        
         Args:
             sqe_file_path: Path to SQE JSONL file
         """
@@ -187,13 +189,57 @@ class TrainingDataCollector:
             logger.warning(f"SQE file not found: {sqe_file_path}")
             return
         
+        sqe_count = 0
         with open(sqe_path, "r") as f:
             for line in f:
                 sqe_example = json.loads(line)
                 
-                self.examples.append(sqe_example)
+                # Convert SQE format to HRM training format
+                if "prompt" in sqe_example and "completion" in sqe_example:
+                    # SQE format: {prompt, completion}
+                    # Convert to HRM format: {puzzle_id, input_sequence, target_sequence, ...}
+                    converted_example = self._convert_sqe_to_hrm_format(sqe_example)
+                    self.examples.append(converted_example)
+                    sqe_count += 1
+                elif "input_sequence" in sqe_example:
+                    # Already in HRM format
+                    self.examples.append(sqe_example)
+                    sqe_count += 1
+                else:
+                    logger.warning(f"Skipping SQE example with unknown format: {list(sqe_example.keys())}")
         
-        logger.info(f"Added SQE examples, total: {len(self.examples)}")
+        logger.info(f"Added {sqe_count} SQE examples, total: {len(self.examples)}")
+    
+    def _convert_sqe_to_hrm_format(self, sqe_example: Dict) -> Dict[str, Any]:
+        """
+        Convert SQE format to HRM training format.
+        
+        Args:
+            sqe_example: Example in SQE format {prompt, completion}
+            
+        Returns:
+            Example in HRM format
+        """
+        # Convert text to tokens
+        input_tokens = self.converter.text_to_tokens(sqe_example["prompt"], max_len=100)
+        output_tokens = self.converter.text_to_tokens(sqe_example["completion"], max_len=200)
+        
+        # Create HRM format example
+        puzzle_id = abs(hash(sqe_example.get("prompt", ""))) % 1000
+        
+        return {
+            "puzzle_id": puzzle_id,
+            "input_sequence": input_tokens,
+            "target_sequence": output_tokens,
+            "solution_steps": [
+                {"action": 0, "state": None} for _ in range(len(output_tokens))
+            ],
+            "metadata": {
+                "source": "sqe_augmentation",
+                "original_format": "prompt_completion",
+                "timestamp": datetime.now().isoformat(),
+            }
+        }
     
     def save_training_data(self, filename: str = "training_data.jsonl"):
         """

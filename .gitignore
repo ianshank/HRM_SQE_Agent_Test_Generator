@@ -77,6 +77,11 @@ analysis/
 !**/test_data/*.json
 !**/hrm_checkpoint_eval/*.json
 
+# Security scan temporary reports
+snyk_*.json
+snyk_*.txt
+snyk_*.html
+
 # Evaluation Reports
 *.pdf
 !**/docs/*.pdf
@@ -141,3 +146,13 @@ Thumbs.db
 
 # Plan Files
 *.plan.md
+
+# Drop Folder System
+drop_folder/processing/
+drop_folder/output/
+drop_folder/archive/
+drop_folder/errors/
+drop_folder/*.log
+drop_folder/input/*.txt
+drop_folder/input/*.md
+!drop_folder/input/sample_requirement.txt

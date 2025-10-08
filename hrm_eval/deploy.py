@@ -18,9 +18,11 @@ from evaluation import Evaluator
 from ensemble import EnsembleModel, EnsembleStrategy
 from data import PuzzleDataset, create_dataloader
 from utils import load_checkpoint, load_config, setup_logging
+from utils.security import PathValidator, SecurityAuditor, PathTraversalError
 
 
 logger = logging.getLogger(__name__)
+security_auditor = SecurityAuditor()
 
 
 def parse_args():
@@ -94,6 +96,43 @@ def parse_args():
     return parser.parse_args()
 
 
+def validate_output_directory(output_dir_arg: str) -> Path:
+    """
+    Validate and create output directory with security checks.
+    
+    Args:
+        output_dir_arg: User-provided output directory path
+        
+    Returns:
+        Validated Path object for output directory
+        
+    Raises:
+        PathTraversalError: If path traversal attempt detected
+    """
+    # Use project root as base directory for output paths
+    project_root = Path(__file__).parent.parent.resolve()
+    
+    try:
+        path_validator = PathValidator(project_root)
+        output_dir = path_validator.validate_directory(
+            output_dir_arg,
+            create_if_missing=True
+        )
+        
+        logger.info(f"Output directory validated: {output_dir}")
+        return output_dir
+        
+    except PathTraversalError as e:
+        logger.error(f"Security violation: {e}")
+        security_auditor.log_security_event(
+            event_type="PATH_TRAVERSAL_BLOCKED",
+            description=f"Blocked path traversal attempt in output directory: {output_dir_arg}",
+            severity="ERROR",
+            metadata={"attempted_path": output_dir_arg}
+        )
+        raise
+
+
 def load_model(checkpoint_path: Path, config, device: torch.device) -> HRMModel:
     """
     Load HRM model from checkpoint.
@@ -156,8 +195,8 @@ def evaluate_single_model(args, config, device):
         save_trajectories=config.evaluation.save_trajectories,
     )
     
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Validate output directory with security checks
+    output_dir = validate_output_directory(args.output_dir)
     
     results.save(output_dir / f"results_{args.checkpoint}.json")
     
@@ -220,8 +259,8 @@ def evaluate_ensemble(args, config, device):
         save_trajectories=config.evaluation.save_trajectories,
     )
     
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Validate output directory with security checks
+    output_dir = validate_output_directory(args.output_dir)
     
     ensemble_name = "_".join(args.checkpoints)
     results.save(output_dir / f"results_ensemble_{ensemble_name}.json")
