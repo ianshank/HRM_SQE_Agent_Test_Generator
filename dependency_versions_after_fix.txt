@@ -1,6 +1,0 @@
-fastapi==0.118.0
-fastapi-cli==0.0.13
-opentelemetry-instrumentation-fastapi==0.47b0
-sentence-transformers==3.1.0
-sse-starlette==3.0.2
-starlette==0.47.2
