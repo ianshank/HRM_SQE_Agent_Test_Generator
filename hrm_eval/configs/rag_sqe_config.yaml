@@ -1,0 +1,135 @@
+# RAG + SQE Agent Configuration
+# Configuration for hybrid test generation with RAG and SQE agent integration
+
+rag:
+  # Vector store backend ("chromadb" or "pinecone")
+  backend: "chromadb"
+  
+  # Directory for ChromaDB persistence
+  persist_directory: "vector_store_db"
+  
+  # Collection name for test cases
+  collection_name: "test_cases_requirements"
+  
+  # Embedding model from HuggingFace
+  # Options: "all-MiniLM-L6-v2" (384 dim, fast), "all-mpnet-base-v2" (768 dim, quality)
+  embedding_model: "all-MiniLM-L6-v2"
+  
+  # Number of similar tests to retrieve
+  top_k_retrieval: 5
+  
+  # Minimum similarity threshold (0.0 to 1.0)
+  min_similarity: 0.7
+  
+  # Batch size for indexing
+  index_batch_size: 100
+  
+  # Pinecone configuration (if backend is "pinecone")
+  pinecone:
+    api_key: "${PINECONE_API_KEY}"  # Set via environment variable
+    environment: "us-west1-gcp"
+    index_name: "test-cases"
+    dimension: 384
+
+sqe_agent:
+  # LLM provider ("openai" or "anthropic")
+  llm_provider: "openai"
+  
+  # Model name
+  model: "gpt-4"
+  
+  # Temperature for generation (0.0 to 1.0)
+  temperature: 0.7
+  
+  # Max tokens for generation
+  max_tokens: 2000
+  
+  # Enable RAG retrieval in agent
+  enable_rag: true
+  
+  # Enable HRM model integration
+  enable_hrm: true
+  
+  # LangGraph configuration
+  workflow:
+    enable_memory: true
+    max_iterations: 10
+
+hybrid_generation:
+  # Generation mode: "hrm_only", "sqe_only", "hybrid"
+  mode: "hybrid"
+  
+  # Merge strategy: "weighted", "union", "intersection"
+  merge_strategy: "weighted"
+  
+  # Weight for HRM results (0.0 to 1.0)
+  hrm_weight: 0.6
+  
+  # Weight for SQE results (0.0 to 1.0)
+  sqe_weight: 0.4
+  
+  # Automatically index generated test cases
+  auto_index: true
+  
+  # Include RAG context in generation
+  include_rag_context: true
+  
+  # Include tech stack in context
+  include_tech_stack: true
+  
+  # Include architecture in context
+  include_architecture: true
+
+workflow_manager:
+  # Auto-index generated tests to vector store
+  auto_index: true
+  
+  # Default workflow type: "full", "generate_only", "validate_only"
+  default_workflow: "full"
+
+context_builder:
+  # Maximum similar tests in context
+  max_similar_tests: 5
+  
+  # Include metadata in context
+  include_metadata: true
+  
+  # Build compact context for token limits
+  compact_mode: false
+
+api:
+  # Enable RAG endpoints
+  enable_rag_endpoints: true
+  
+  # Enable SQE agent endpoints
+  enable_sqe_endpoints: true
+  
+  # Default to hybrid generation
+  default_generation_mode: "hybrid"
+
+logging:
+  # Log RAG retrieval operations
+  log_rag_retrieval: true
+  
+  # Log SQE agent workflow
+  log_sqe_workflow: true
+  
+  # Log hybrid generation
+  log_hybrid_generation: true
+  
+  # Detailed logging level
+  level: "INFO"
+
+# Performance settings
+performance:
+  # Enable caching for embeddings
+  cache_embeddings: true
+  
+  # Cache TTL (seconds)
+  cache_ttl: 3600
+  
+  # Parallel processing for batch operations
+  parallel_batch_processing: true
+  
+  # Max workers for parallel operations
+  max_workers: 4

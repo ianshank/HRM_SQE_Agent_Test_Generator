@@ -1,0 +1,148 @@
+# Test Generation Configuration
+# Configuration for HRM-based requirements-to-test-cases generation
+
+generator:
+  # Model checkpoint to use (best performing from evaluation)
+  model_checkpoint: "step_7566"
+  
+  # Batch size for generation
+  batch_size: 16
+  
+  # Maximum test cases to generate per user story
+  max_test_cases_per_story: 5
+  
+  # Distribution of test types to generate
+  test_type_distribution:
+    positive: 0.4    # Happy path scenarios
+    negative: 0.35   # Error/failure scenarios
+    edge: 0.25       # Edge cases and boundaries
+  
+  # Temperature for sampling (lower = more deterministic)
+  temperature: 0.7
+  
+  # Top-k sampling parameter
+  top_k: 5
+  
+  # Maximum sequence length for model input
+  max_input_length: 100
+  
+  # Maximum sequence length for model output
+  max_output_length: 200
+
+# API Service Configuration
+api:
+  # Host to bind to
+  host: "0.0.0.0"
+  
+  # Port to listen on
+  port: 8000
+  
+  # Rate limiting (requests per minute)
+  rate_limit: "100/minute"
+  
+  # Enable CORS
+  cors_enabled: true
+  
+  # Require authentication
+  require_auth: false
+  
+  # Request timeout (seconds)
+  timeout: 120
+
+# Fine-tuning Configuration
+fine_tuning:
+  # Learning rate for fine-tuning
+  learning_rate: 0.00001
+  
+  # Number of training epochs
+  epochs: 3
+  
+  # Training batch size
+  batch_size: 16
+  
+  # Validation split (percentage)
+  validation_split: 0.2
+  
+  # Warmup steps for learning rate
+  warmup_steps: 100
+  
+  # Gradient clipping value
+  gradient_clip: 1.0
+  
+  # Save checkpoint every N steps
+  save_every_n_steps: 500
+  
+  # Evaluate on validation set every N steps
+  eval_every_n_steps: 100
+  
+  # Output directory for fine-tuned checkpoints
+  output_dir: "fine_tuned_checkpoints"
+
+# Coverage Analysis Configuration
+coverage:
+  # Minimum coverage threshold (0.0 to 1.0)
+  min_coverage: 0.8
+  
+  # Require all test types (positive, negative, edge)
+  require_all_types: true
+  
+  # Minimum positive test cases per story
+  min_positive_per_story: 1
+  
+  # Minimum negative test cases per story
+  min_negative_per_story: 1
+  
+  # Priority distribution targets
+  priority_targets:
+    P1: 0.3  # Critical
+    P2: 0.5  # Important
+    P3: 0.2  # Nice-to-have
+
+# Agent System Integration Configuration
+agent_system:
+  # Agent ID for registration
+  agent_id: "test_generator_agent"
+  
+  # Agent type
+  agent_type: "SQE"
+  
+  # Enable iterative refinement in workflows
+  enable_refinement: true
+  
+  # Maximum refinement iterations
+  max_refinement_iterations: 3
+
+# Logging Configuration
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: "INFO"
+  
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # Log to file
+  log_to_file: true
+  
+  # Log file path
+  log_file: "logs/test_generation.log"
+  
+  # Rotate logs
+  rotate_logs: true
+  
+  # Max log file size (MB)
+  max_log_size_mb: 100
+
+# Output Configuration
+output:
+  # Output directory for generated test cases
+  output_dir: "generated_tests"
+  
+  # Save format (json, markdown, both)
+  save_format: "both"
+  
+  # Include metadata in output
+  include_metadata: true
+  
+  # Include coverage report
+  include_coverage_report: true
+

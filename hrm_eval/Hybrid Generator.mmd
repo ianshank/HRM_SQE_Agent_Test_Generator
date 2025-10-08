@@ -1,0 +1,48 @@
+graph TB
+    subgraph "Hybrid Generator"
+        HG_INIT[Initialize<br/>HRM, SQE, RAG]
+        HG_MODE{Generation Mode?}
+        HG_HRM[HRM Only Path]
+        HG_SQE[SQE Only Path]
+        HG_HYBRID[Hybrid Path]
+        HG_MERGE[Merge Strategy<br/>Weighted/Union/Intersection]
+        HG_OUTPUT[Merged Results]
+        
+        HG_INIT --> HG_MODE
+        HG_MODE -->|hrm_only| HG_HRM
+        HG_MODE -->|sqe_only| HG_SQE
+        HG_MODE -->|hybrid| HG_HYBRID
+        
+        HG_HRM --> HG_MERGE
+        HG_SQE --> HG_MERGE
+        HG_HYBRID --> HG_MERGE
+        HG_MERGE --> HG_OUTPUT
+    end
+    
+    subgraph "Workflow Manager"
+        WM_VALIDATE[Validate Requirements]
+        WM_GENERATE[Generate Tests]
+        WM_ANALYZE[Analyze Coverage]
+        WM_INDEX[Auto-Index Results]
+        WM_STATS[Collect Statistics]
+        
+        WM_VALIDATE --> WM_GENERATE
+        WM_GENERATE --> WM_ANALYZE
+        WM_ANALYZE --> WM_INDEX
+        WM_INDEX --> WM_STATS
+    end
+    
+    subgraph "Context Builder"
+        CB_EXTRACT[Extract Context]
+        CB_RAG[RAG Retrieval]
+        CB_ENRICH[Enrich with History]
+        CB_FORMAT[Format for Models]
+        
+        CB_EXTRACT --> CB_RAG
+        CB_RAG --> CB_ENRICH
+        CB_ENRICH --> CB_FORMAT
+    end
+    
+    style HG_INIT fill:#2196F3
+    style WM_VALIDATE fill:#9C27B0
+    style CB_EXTRACT fill:#00BCD4

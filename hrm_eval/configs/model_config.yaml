@@ -1,0 +1,43 @@
+# HRM v9 Optimized Model Configuration
+
+model:
+  name: "hrm_v9_optimized"
+  vocab_size: 12
+  embed_dim: 256
+  num_puzzles: 95996
+  
+  # H-level (High-level) Transformer
+  h_level:
+    num_layers: 2
+    hidden_size: 256
+    intermediate_size: 768
+    num_attention_heads: 8
+    dropout: 0.1
+    
+  # L-level (Low-level) Transformer
+  l_level:
+    num_layers: 2
+    hidden_size: 256
+    intermediate_size: 768
+    num_attention_heads: 8
+    dropout: 0.1
+    
+  # Output heads
+  lm_head:
+    vocab_size: 12
+    hidden_size: 256
+    
+  q_head:
+    num_actions: 2
+    hidden_size: 256
+
+checkpoint:
+  base_dir: "../"
+  primary: "checkpoints_hrm_v9_optimized_step_7566"
+  secondary: "checkpoints_hrm_v9_optimized_step_3607"
+  
+device:
+  type: "cuda"  # cuda, cpu, mps
+  device_id: 0
+  mixed_precision: true
+

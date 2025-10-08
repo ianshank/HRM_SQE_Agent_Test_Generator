@@ -1,0 +1,193 @@
+{
+  "total_parameters": 27990018,
+  "model_size_mb": 106.77344512939453,
+  "components": {
+    "inner": {
+      "num_layers": 23,
+      "total_params": 27990018,
+      "layers": [
+        {
+          "name": "model.inner.H_init",
+          "shape": [
+            256
+          ],
+          "params": 256
+        },
+        {
+          "name": "model.inner.L_init",
+          "shape": [
+            256
+          ],
+          "params": 256
+        },
+        {
+          "name": "model.inner.embed_tokens.embedding_weight",
+          "shape": [
+            12,
+            256
+          ],
+          "params": 3072
+        },
+        {
+          "name": "model.inner.lm_head.weight",
+          "shape": [
+            12,
+            256
+          ],
+          "params": 3072
+        },
+        {
+          "name": "model.inner.q_head.weight",
+          "shape": [
+            2,
+            256
+          ],
+          "params": 512
+        },
+        {
+          "name": "model.inner.q_head.bias",
+          "shape": [
+            2
+          ],
+          "params": 2
+        },
+        {
+          "name": "model.inner.puzzle_emb.weights",
+          "shape": [
+            95996,
+            256
+          ],
+          "params": 24574976
+        },
+        {
+          "name": "model.inner.H_level.layers.0.self_attn.qkv_proj.weight",
+          "shape": [
+            768,
+            256
+          ],
+          "params": 196608
+        },
+        {
+          "name": "model.inner.H_level.layers.0.self_attn.o_proj.weight",
+          "shape": [
+            256,
+            256
+          ],
+          "params": 65536
+        },
+        {
+          "name": "model.inner.H_level.layers.0.mlp.gate_up_proj.weight",
+          "shape": [
+            1536,
+            256
+          ],
+          "params": 393216
+        },
+        {
+          "name": "model.inner.H_level.layers.0.mlp.down_proj.weight",
+          "shape": [
+            256,
+            768
+          ],
+          "params": 196608
+        },
+        {
+          "name": "model.inner.H_level.layers.1.self_attn.qkv_proj.weight",
+          "shape": [
+            768,
+            256
+          ],
+          "params": 196608
+        },
+        {
+          "name": "model.inner.H_level.layers.1.self_attn.o_proj.weight",
+          "shape": [
+            256,
+            256
+          ],
+          "params": 65536
+        },
+        {
+          "name": "model.inner.H_level.layers.1.mlp.gate_up_proj.weight",
+          "shape": [
+            1536,
+            256
+          ],
+          "params": 393216
+        },
+        {
+          "name": "model.inner.H_level.layers.1.mlp.down_proj.weight",
+          "shape": [
+            256,
+            768
+          ],
+          "params": 196608
+        },
+        {
+          "name": "model.inner.L_level.layers.0.self_attn.qkv_proj.weight",
+          "shape": [
+            768,
+            256
+          ],
+          "params": 196608
+        },
+        {
+          "name": "model.inner.L_level.layers.0.self_attn.o_proj.weight",
+          "shape": [
+            256,
+            256
+          ],
+          "params": 65536
+        },
+        {
+          "name": "model.inner.L_level.layers.0.mlp.gate_up_proj.weight",
+          "shape": [
+            1536,
+            256
+          ],
+          "params": 393216
+        },
+        {
+          "name": "model.inner.L_level.layers.0.mlp.down_proj.weight",
+          "shape": [
+            256,
+            768
+          ],
+          "params": 196608
+        },
+        {
+          "name": "model.inner.L_level.layers.1.self_attn.qkv_proj.weight",
+          "shape": [
+            768,
+            256
+          ],
+          "params": 196608
+        },
+        {
+          "name": "model.inner.L_level.layers.1.self_attn.o_proj.weight",
+          "shape": [
+            256,
+            256
+          ],
+          "params": 65536
+        },
+        {
+          "name": "model.inner.L_level.layers.1.mlp.gate_up_proj.weight",
+          "shape": [
+            1536,
+            256
+          ],
+          "params": 393216
+        },
+        {
+          "name": "model.inner.L_level.layers.1.mlp.down_proj.weight",
+          "shape": [
+            256,
+            768
+          ],
+          "params": 196608
+        }
+      ]
+    }
+  }
+}

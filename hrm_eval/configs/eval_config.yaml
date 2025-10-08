@@ -1,0 +1,51 @@
+# Evaluation Configuration
+
+evaluation:
+  batch_size: 32
+  num_workers: 4
+  max_steps_per_puzzle: 1000
+  timeout_seconds: 60
+  
+  # Metrics to compute
+  metrics:
+    - "solve_rate"
+    - "accuracy"
+    - "average_steps"
+    - "success_rate"
+    - "step_efficiency"
+    - "time_per_puzzle"
+  
+  # Save results
+  save_predictions: true
+  save_trajectories: true
+  output_dir: "./results"
+
+data:
+  validation_set: "./data/validation"
+  test_set: "./data/test"
+  data_format: "jsonl"  # jsonl, csv, pickle
+  
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "json"
+  log_dir: "./logs"
+  console_output: true
+  file_output: true
+  
+wandb:
+  enabled: false
+  project: "hrm-evaluation"
+  entity: "ianshank-none"
+  tags:
+    - "hrm_v9"
+    - "evaluation"
+    - "deployment"
+
+ensemble:
+  enabled: false
+  strategy: "weighted_average"  # weighted_average, voting, stacking
+  weights:
+    step_7566: 0.6
+    step_3607: 0.4
+  voting_threshold: 0.5
+
