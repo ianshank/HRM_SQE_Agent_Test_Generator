@@ -207,6 +207,9 @@ device:
 # Model Configuration Overrides
 # These override values from model_config.yaml when needed
 model:
+  # Default checkpoint selection
+  default_checkpoint: "step_7566"  # Default checkpoint to use when not specified
+  
   # Checkpoint loading
   strict_loading: false
   load_optimizer_state: false

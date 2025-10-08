@@ -192,6 +192,11 @@ class DeviceConfig(BaseModel):
 
 class ModelConfigOverrides(BaseModel):
     """Model configuration overrides."""
+    default_checkpoint: str = Field(
+        default="step_7566",
+        description="Default checkpoint to use when not specified"
+    )
+    
     strict_loading: bool = False
     load_optimizer_state: bool = False
     map_location: Optional[str] = None

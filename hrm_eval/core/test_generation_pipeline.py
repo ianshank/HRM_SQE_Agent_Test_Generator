@@ -242,8 +242,8 @@ class TestGenerationPipeline:
     def _load_model(self, checkpoint_name: Optional[str] = None):
         """Load HRM model via model manager."""
         if checkpoint_name is None:
-            checkpoint_name = "step_7566"
-            logger.debug(f"Using default checkpoint: {checkpoint_name}")
+            checkpoint_name = self.config.model.default_checkpoint
+            logger.debug(f"Using default checkpoint from config: {checkpoint_name}")
         
         return self.model_manager.load_model(checkpoint_name, use_cache=True)
     

@@ -237,12 +237,19 @@ class ModelManager:
         return hashlib.md5(key_string.encode()).hexdigest()[:16]
     
     def _extract_checkpoint_step(self, checkpoint_name: str) -> Optional[int]:
-        """Extract step number from checkpoint name."""
-        import re
-        match = re.search(r'step_(\d+)', checkpoint_name)
-        if match:
-            return int(match.group(1))
-        return None
+        """
+        Extract step number from checkpoint name.
+        
+        Delegates to centralized function in common_utils to avoid duplication.
+        
+        Args:
+            checkpoint_name: Checkpoint name
+            
+        Returns:
+            Step number or None
+        """
+        from .common_utils import extract_checkpoint_step
+        return extract_checkpoint_step(checkpoint_name)
     
     def get_checkpoint_path(self, checkpoint_name: str, base_dir: Optional[Path] = None) -> Path:
         """
