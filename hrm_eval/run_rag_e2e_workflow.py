@@ -115,7 +115,7 @@ class RAGEnhancedTestGenerator:
         
         if user_story.acceptance_criteria:
             criteria_text = " ".join([
-                ac.criterion for ac in user_story.acceptance_criteria[:3]
+                ac.criteria for ac in user_story.acceptance_criteria[:3]
             ])
             parts.append(f"Criteria: {criteria_text}")
         

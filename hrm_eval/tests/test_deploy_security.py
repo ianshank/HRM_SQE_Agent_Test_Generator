@@ -10,11 +10,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from deploy import validate_output_directory
-from utils.security import PathTraversalError
+from hrm_eval.deploy import validate_output_directory
+from hrm_eval.utils.security import PathTraversalError
 
 
 class TestOutputDirectoryValidation:

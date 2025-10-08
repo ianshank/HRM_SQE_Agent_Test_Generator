@@ -17,7 +17,7 @@ import hashlib
 from pathlib import Path
 import logging
 
-from utils.security import (
+from hrm_eval.utils.security import (
     PathValidator,
     SecureHasher,
     InputValidator,
