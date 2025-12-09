@@ -156,3 +156,27 @@ drop_folder/*.log
 drop_folder/input/*.txt
 drop_folder/input/*.md
 !drop_folder/input/sample_requirement.txt
+
+# Docker
+.docker/
+
+# Load Testing
+load_tests/*.html
+load_tests/*.csv
+load_tests/results/
+
+# Profiling
+profiling_results/
+*.prof
+*.lprof
+
+# Ruff
+.ruff_cache/
+
+# Documentation builds
+site/
+docs/_build/
+
+# Fine-tuned checkpoints (keep base checkpoint)
+fine_tuned_checkpoints/
+!fine_tuned_checkpoints/media_fulfillment/

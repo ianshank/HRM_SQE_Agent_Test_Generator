@@ -1,0 +1,46 @@
+# Prometheus Configuration for HRM SQE Agent Test Generator
+# Scrapes metrics from the API service
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'hrm-eval-monitor'
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files
+rule_files: []
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # HRM API Service
+  - job_name: 'hrm-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+
+  # HRM API Health
+  - job_name: 'hrm-api-health'
+    metrics_path: '/health-extended'
+    static_configs:
+      - targets: ['api:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
