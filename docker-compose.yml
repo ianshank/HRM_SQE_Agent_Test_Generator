@@ -1,0 +1,270 @@
+# HRM SQE Agent Test Generator - Docker Compose Configuration
+# Supports development, testing, and production environments
+
+version: "3.9"
+
+# =============================================================================
+# Shared configurations
+# =============================================================================
+x-common-env: &common-env
+  HRM_ENV: ${HRM_ENV:-development}
+  HRM_LOG_LEVEL: ${HRM_LOG_LEVEL:-INFO}
+  HRM_DEBUG: ${HRM_DEBUG:-false}
+  HRM_RAG_BACKEND: ${HRM_RAG_BACKEND:-chromadb}
+  HRM_VECTOR_STORE_DIR: /app/vector_store_db
+  HRM_GENERATION_MODE: ${HRM_GENERATION_MODE:-hybrid}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  PINECONE_API_KEY: ${PINECONE_API_KEY:-}
+  PINECONE_ENVIRONMENT: ${PINECONE_ENVIRONMENT:-us-west1-gcp}
+
+x-common-healthcheck: &common-healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 10s
+
+# =============================================================================
+# Services
+# =============================================================================
+services:
+  # ---------------------------------------------------------------------------
+  # Main API Service
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-runtime}
+    image: hrm-eval:${IMAGE_TAG:-latest}
+    container_name: hrm-eval-api
+    restart: unless-stopped
+    ports:
+      - "${HRM_API_PORT:-8000}:8000"
+      - "${HRM_METRICS_PORT:-9090}:9090"
+    environment:
+      <<: *common-env
+      HRM_API_HOST: "0.0.0.0"
+      HRM_API_PORT: "8000"
+      HRM_API_WORKERS: ${HRM_API_WORKERS:-4}
+      HRM_RATE_LIMIT_PER_MINUTE: ${HRM_RATE_LIMIT_PER_MINUTE:-100}
+      HRM_METRICS_ENABLED: ${HRM_METRICS_ENABLED:-true}
+    volumes:
+      - vector_store_data:/app/vector_store_db
+      - logs_data:/app/logs
+      - ./checkpoints_hrm_v9_optimized_step_7566:/app/checkpoints_hrm_v9_optimized_step_7566:ro
+      - drop_folder_input:/app/drop_folder/input
+      - drop_folder_output:/app/drop_folder/output
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    networks:
+      - hrm-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  # ---------------------------------------------------------------------------
+  # Development API (with hot reload)
+  # ---------------------------------------------------------------------------
+  api-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: hrm-eval:dev
+    container_name: hrm-eval-api-dev
+    profiles:
+      - dev
+    ports:
+      - "${HRM_API_PORT:-8000}:8000"
+    environment:
+      <<: *common-env
+      HRM_ENV: development
+      HRM_DEBUG: "true"
+      HRM_LOG_LEVEL: DEBUG
+    volumes:
+      - ./hrm_eval:/app/hrm_eval:cached
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - vector_store_data:/app/vector_store_db
+      - logs_data:/app/logs
+      - ./checkpoints_hrm_v9_optimized_step_7566:/app/checkpoints_hrm_v9_optimized_step_7566:ro
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    networks:
+      - hrm-network
+
+  # ---------------------------------------------------------------------------
+  # Drop Folder Watcher Service
+  # ---------------------------------------------------------------------------
+  drop-folder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: hrm-eval:${IMAGE_TAG:-latest}
+    container_name: hrm-eval-drop-folder
+    restart: unless-stopped
+    profiles:
+      - full
+    environment:
+      <<: *common-env
+      HRM_DROP_FOLDER_DIR: /app/drop_folder
+      HRM_DROP_FOLDER_INTERVAL: ${HRM_DROP_FOLDER_INTERVAL:-5}
+      HRM_DROP_FOLDER_DEBOUNCE: ${HRM_DROP_FOLDER_DEBOUNCE:-2}
+    volumes:
+      - vector_store_data:/app/vector_store_db
+      - logs_data:/app/logs
+      - ./checkpoints_hrm_v9_optimized_step_7566:/app/checkpoints_hrm_v9_optimized_step_7566:ro
+      - drop_folder_input:/app/drop_folder/input
+      - drop_folder_output:/app/drop_folder/output
+    command: ["python", "-m", "hrm_eval.drop_folder.cli", "watch"]
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - hrm-network
+
+  # ---------------------------------------------------------------------------
+  # ChromaDB Vector Store (optional standalone)
+  # ---------------------------------------------------------------------------
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: hrm-chromadb
+    profiles:
+      - chromadb
+    ports:
+      - "${CHROMADB_PORT:-8001}:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+    networks:
+      - hrm-network
+
+  # ---------------------------------------------------------------------------
+  # Prometheus Metrics Collection
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: hrm-prometheus
+    profiles:
+      - monitoring
+    ports:
+      - "${PROMETHEUS_PORT:-9091}:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+    networks:
+      - hrm-network
+
+  # ---------------------------------------------------------------------------
+  # Grafana Dashboard
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hrm-grafana
+    profiles:
+      - monitoring
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+    networks:
+      - hrm-network
+
+  # ---------------------------------------------------------------------------
+  # Test Runner
+  # ---------------------------------------------------------------------------
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: hrm-eval:test
+    container_name: hrm-eval-test
+    profiles:
+      - test
+    environment:
+      <<: *common-env
+      HRM_ENV: test
+    volumes:
+      - ./hrm_eval:/app/hrm_eval:cached
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - test_results:/app/test_results
+    command: ["pytest", "hrm_eval/tests/", "-v", "--cov=hrm_eval", "--cov-report=html:/app/test_results/coverage"]
+    networks:
+      - hrm-network
+
+  # ---------------------------------------------------------------------------
+  # Load Testing with Locust
+  # ---------------------------------------------------------------------------
+  locust:
+    image: locustio/locust:latest
+    container_name: hrm-locust
+    profiles:
+      - loadtest
+    ports:
+      - "${LOCUST_WEB_PORT:-8089}:8089"
+    volumes:
+      - ./load_tests:/mnt/locust:ro
+    command: ["-f", "/mnt/locust/locustfile.py", "--host", "http://api:8000"]
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - hrm-network
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  hrm-network:
+    driver: bridge
+    name: hrm-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  vector_store_data:
+    name: hrm-vector-store
+  logs_data:
+    name: hrm-logs
+  drop_folder_input:
+    name: hrm-drop-folder-input
+  drop_folder_output:
+    name: hrm-drop-folder-output
+  chromadb_data:
+    name: hrm-chromadb
+  prometheus_data:
+    name: hrm-prometheus
+  grafana_data:
+    name: hrm-grafana
+  test_results:
+    name: hrm-test-results

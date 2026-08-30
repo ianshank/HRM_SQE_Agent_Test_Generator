@@ -1,0 +1,388 @@
+# HRM SQE Agent Test Generator - CI/CD Pipeline
+# Comprehensive testing, security scanning, and quality checks
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, "feature/**", "fix/**"]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      run_integration_tests:
+        description: 'Run integration tests'
+        required: false
+        default: 'true'
+        type: boolean
+      run_load_tests:
+        description: 'Run load tests'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.7.0"
+  # Cache keys
+  CACHE_VERSION: v1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ===========================================================================
+  # Code Quality Checks
+  # ===========================================================================
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-lint-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-lint-${{ env.CACHE_VERSION }}-
+
+      - name: Install linting tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install black ruff mypy
+
+      - name: Check code formatting with Black
+        run: black --check --diff hrm_eval/
+
+      - name: Lint with Ruff
+        run: ruff check hrm_eval/
+
+      - name: Type check with MyPy
+        run: mypy hrm_eval/ --ignore-missing-imports --no-error-summary || true
+        continue-on-error: true  # Type checking is advisory for now
+
+  # ===========================================================================
+  # Unit Tests
+  # ===========================================================================
+  test-unit:
+    name: Unit Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ env.CACHE_VERSION }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+
+      - name: Run unit tests
+        run: |
+          pytest hrm_eval/tests/ \
+            -v \
+            --tb=short \
+            -m "not integration and not slow and not gpu" \
+            --cov=hrm_eval \
+            --cov-report=xml \
+            --cov-report=html \
+            --junitxml=test-results-${{ matrix.python-version }}.xml
+        env:
+          HRM_ENV: test
+          HRM_LOG_LEVEL: WARNING
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.python-version == '3.11'
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: |
+            test-results-*.xml
+            htmlcov/
+          retention-days: 7
+
+  # ===========================================================================
+  # Integration Tests
+  # ===========================================================================
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [lint, test-unit]
+    if: github.event.inputs.run_integration_tests != 'false'
+
+    services:
+      chromadb:
+        image: chromadb/chroma:latest
+        ports:
+          - 8001:8000
+        env:
+          IS_PERSISTENT: FALSE
+          ANONYMIZED_TELEMETRY: FALSE
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-integration-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+
+      - name: Wait for ChromaDB
+        run: |
+          timeout 30 bash -c 'until curl -s http://localhost:8001/api/v1/heartbeat; do sleep 1; done'
+
+      - name: Run integration tests
+        run: |
+          pytest hrm_eval/tests/ \
+            -v \
+            --tb=short \
+            -m "integration" \
+            --junitxml=integration-test-results.xml
+        env:
+          HRM_ENV: test
+          HRM_LOG_LEVEL: INFO
+          HRM_RAG_BACKEND: chromadb
+          CHROMADB_HOST: localhost
+          CHROMADB_PORT: 8001
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: integration-test-results.xml
+          retention-days: 7
+
+  # ===========================================================================
+  # Security Scanning
+  # ===========================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [lint]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety bandit pip-audit
+
+      - name: Run Bandit security linter
+        run: bandit -r hrm_eval/ -ll -ii --exclude hrm_eval/tests/ || true
+        continue-on-error: true
+
+      - name: Run pip-audit for dependency vulnerabilities
+        run: |
+          pip install -e .
+          pip-audit --desc || true
+        continue-on-error: true
+
+      - name: Run Safety check
+        run: safety check --full-report || true
+        continue-on-error: true
+
+  # ===========================================================================
+  # Docker Build
+  # ===========================================================================
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [test-unit]
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          target: runtime
+          push: false
+          tags: hrm-eval:${{ github.sha }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Run container health check
+        run: |
+          docker run -d --name test-container -p 8000:8000 hrm-eval:${{ github.sha }} || true
+          sleep 10
+          curl -f http://localhost:8000/health || echo "Health check skipped - no checkpoint"
+          docker stop test-container || true
+        continue-on-error: true
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+  # ===========================================================================
+  # Load Testing (Optional)
+  # ===========================================================================
+  load-test:
+    name: Load Testing
+    runs-on: ubuntu-latest
+    needs: [test-integration]
+    if: github.event.inputs.run_load_tests == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+          pip install locust
+
+      - name: Start API server
+        run: |
+          uvicorn hrm_eval.api_service.main:app --host 0.0.0.0 --port 8000 &
+          sleep 10
+        env:
+          HRM_ENV: test
+
+      - name: Run load tests
+        run: |
+          if [ -f load_tests/locustfile.py ]; then
+            locust -f load_tests/locustfile.py \
+              --host http://localhost:8000 \
+              --users 10 \
+              --spawn-rate 2 \
+              --run-time 60s \
+              --headless \
+              --html load-test-report.html
+          else
+            echo "No load test file found, skipping"
+          fi
+        continue-on-error: true
+
+      - name: Upload load test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-results
+          path: load-test-report.html
+          retention-days: 7
+
+  # ===========================================================================
+  # Summary Job
+  # ===========================================================================
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs: [lint, test-unit, security, docker-build]
+    if: always()
+
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-unit.result }}" == "failure" ]] || \
+             [[ "${{ needs.docker-build.result }}" == "failure" ]]; then
+            echo "One or more required jobs failed"
+            exit 1
+          fi
+          echo "All required CI checks passed!"
+
+      - name: Create status comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = `
+            ## CI Status Summary
+
+            | Job | Status |
+            |-----|--------|
+            | Lint | ${{ needs.lint.result }} |
+            | Unit Tests | ${{ needs.test-unit.result }} |
+            | Security | ${{ needs.security.result }} |
+            | Docker Build | ${{ needs.docker-build.result }} |
+
+            ✅ All required checks passed!
+            `;
+
+            // Only comment on PRs
+            if (context.issue.number) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: status
+              });
+            }
+        continue-on-error: true
