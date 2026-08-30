@@ -182,7 +182,7 @@ class RequirementParser:
         epic: Epic
     ) -> str:
         """
-        Format requirement text for HRM model input.
+        Format requirement text for HRM model input with rich context.
         
         Creates a structured prompt that the HRM model can process to generate
         test cases. This is the input that gets tokenized and sent to the model.
@@ -198,27 +198,39 @@ class RequirementParser:
         """
         parts = []
         
-        parts.append(f"Epic: {epic.title}")
-        parts.append(f"Story: {story.summary}")
-        parts.append(f"Description: {story.description}")
+        # Epic context with more detail
+        if epic.title:
+            parts.append(f"Epic: {epic.title}")
         
+        # Story context with rich detail
+        parts.append(f"Story: {story.summary}")
+        if story.description and len(story.description) > 20:
+            # Truncate description to 200 chars for context without overwhelming model
+            parts.append(f"Details: {story.description[:200]}")
+        
+        # Acceptance criterion (specific or all)
         if criterion:
-            parts.append(f"Acceptance Criterion: {criterion.criteria}")
+            parts.append(f"Criterion: {criterion.criteria}")
         elif story.acceptance_criteria:
-            criteria_text = "; ".join([c.criteria for c in story.acceptance_criteria])
+            # Include multiple criteria for better context
+            criteria_list = [c.criteria for c in story.acceptance_criteria[:3]]
+            criteria_text = "; ".join(criteria_list)
             parts.append(f"Acceptance Criteria: {criteria_text}")
         
+        # Tech stack context
         if epic.tech_stack or story.tech_stack:
             tech = list(set(epic.tech_stack + story.tech_stack))
-            parts.append(f"Tech Stack: {', '.join(tech)}")
+            parts.append(f"Tech Stack: {', '.join(tech[:5])}")
         
+        # Architecture context
         if epic.architecture:
-            parts.append(f"Architecture: {epic.architecture}")
+            parts.append(f"Architecture: {epic.architecture[:100]}")
         
+        # Test type instruction
         test_type_instruction = self._get_test_type_instruction(test_type)
         parts.append(test_type_instruction)
         
-        formatted_text = "\n".join(parts)
+        formatted_text = " | ".join(parts)
         
         logger.debug(f"Formatted requirement for {test_type.value} test (length: {len(formatted_text)} chars)")
         

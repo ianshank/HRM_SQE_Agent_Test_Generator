@@ -28,6 +28,13 @@ class TestCasePostProcessor:
     TestCase objects with steps, expected results, and metadata.
     """
     
+    # Constants for text cleaning
+    COMMON_SHORT_WORDS = {'for', 'the', 'and', 'but', 'or', 'is', 'in', 'on', 'at', 'to', 'a', 'an'}
+    
+    # Constants for quality validation
+    GENERIC_TERMS = ['integration test', 'agent agent', 'test test', 'for: requirement']
+    TRUNCATED_INDICATORS = ['ceptance', 'equirement', 'rchitecture']
+    
     def __init__(self):
         """Initialize post-processor."""
         self.token_to_keyword = {
@@ -154,7 +161,36 @@ class TestCasePostProcessor:
         
         description = f"{prefix} {context_hint} for: {criterion}"
         
+        # Clean repetitive text
+        description = self._clean_repetitive_text(description)
+        
         return description
+    
+    def _clean_repetitive_text(self, text: str) -> str:
+        """
+        Remove repetitive words and clean up text.
+        
+        Args:
+            text: Input text to clean
+            
+        Returns:
+            Cleaned text without consecutive duplicates
+        """
+        words = text.split()
+        
+        # Remove consecutive duplicates
+        cleaned = []
+        for i, word in enumerate(words):
+            if i == 0 or word.lower() != words[i-1].lower():
+                cleaned.append(word)
+        
+        result = " ".join(cleaned)
+        
+        # Remove truncated words (less than 3 chars unless common)
+        words = result.split()
+        cleaned_words = [w for w in words if len(w) >= 3 or w.lower() in self.COMMON_SHORT_WORDS]
+        
+        return " ".join(cleaned_words)
     
     def _extract_preconditions(self, context: TestContext) -> List[str]:
         """Extract preconditions from context."""
@@ -309,4 +345,108 @@ class TestCasePostProcessor:
             return Priority.P2
         else:
             return Priority.P3
+    
+    def deduplicate_tests(self, test_cases: List[TestCase]) -> List[TestCase]:
+        """
+        Remove duplicate or near-duplicate test cases.
+        
+        Args:
+            test_cases: List of test cases to deduplicate
+            
+        Returns:
+            Deduplicated list of test cases
+        """
+        unique_tests = []
+        seen_signatures = set()
+        
+        for test in test_cases:
+            # Create signature from description + type + first step
+            first_step = ""
+            if test.test_steps:
+                first_step = test.test_steps[0].action[:50]
+            
+            signature = f"{test.description[:50]}|{test.type}|{first_step}"
+            
+            if signature not in seen_signatures:
+                seen_signatures.add(signature)
+                unique_tests.append(test)
+            else:
+                logger.debug(f"Removing duplicate test: {test.id}")
+        
+        removed_count = len(test_cases) - len(unique_tests)
+        if removed_count > 0:
+            logger.info(f"Removed {removed_count} duplicate test cases")
+        
+        return unique_tests
+    
+    def enhance_test_specificity(self, test_case: TestCase, context: TestContext) -> TestCase:
+        """
+        Make test more specific based on context.
+        
+        Args:
+            test_case: Test case to enhance
+            context: Original test context
+            
+        Returns:
+            Enhanced test case
+        """
+        # Replace generic terms with specific ones from context
+        if "requirement" in test_case.description and context.acceptance_criterion:
+            specific_desc = test_case.description.replace(
+                "requirement",
+                context.acceptance_criterion[:50]
+            )
+            test_case.description = specific_desc
+        
+        # Add context-specific details to steps
+        for step in test_case.test_steps:
+            if "Execute:" in step.action and context.acceptance_criterion:
+                step.action = f"Execute: {context.acceptance_criterion[:80]}"
+        
+        return test_case
+    
+    def validate_test_quality(self, test_case: TestCase) -> tuple[bool, List[str]]:
+        """
+        Validate test case quality and return issues.
+        
+        Args:
+            test_case: Test case to validate
+            
+        Returns:
+            Tuple of (is_valid, list_of_issues)
+        """
+        issues = []
+        
+        # Check for consecutive duplicate words (not all repetitions)
+        words = test_case.description.split()
+        word_list = [w.lower() for w in words]
+        has_consecutive_duplicates = any(
+            word_list[i] == word_list[i-1] 
+            for i in range(1, len(word_list))
+        )
+        if has_consecutive_duplicates:
+            issues.append("Consecutive duplicate words in description")
+        
+        # Check for truncated text using class constant
+        if any(word in test_case.description.lower() for word in self.TRUNCATED_INDICATORS):
+            issues.append("Truncated text detected")
+        
+        # Check for generic descriptions using class constant
+        if any(term in test_case.description.lower() for term in self.GENERIC_TERMS):
+            issues.append("Too generic - lacks specificity")
+        
+        # Check minimum steps
+        if len(test_case.test_steps) < 2:
+            issues.append("Insufficient test steps")
+        
+        # Check preconditions
+        if not test_case.preconditions:
+            issues.append("Missing preconditions")
+        
+        is_valid = len(issues) == 0
+        
+        if not is_valid:
+            logger.debug(f"Quality issues in test {test_case.id}: {', '.join(issues)}")
+        
+        return is_valid, issues
 
